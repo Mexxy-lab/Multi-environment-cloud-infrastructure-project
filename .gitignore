@@ -8,3 +8,4 @@
 *.tfstate
 *.tfstate.*
 *.tfvars
+Training.md
