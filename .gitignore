@@ -9,4 +9,3 @@
 *.tfstate.*
 *.tfvars
 Training.md
-.github/workflows/terraform.yml
