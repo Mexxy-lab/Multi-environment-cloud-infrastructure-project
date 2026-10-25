@@ -51,3 +51,17 @@ variable "enable_compute" {
   type        = bool
   default     = false
 }
+
+variable "state_bucket_name" {
+  description = "Globally unique S3 bucket name for Terraform state"
+  type        = string
+
+  validation {
+    condition = (
+      length(var.state_bucket_name) >= 3 &&
+      length(var.state_bucket_name) <= 63 &&
+      can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.state_bucket_name))
+    )
+    error_message = "Use a valid S3 bucket name of 3–63 lowercase letters, digits, dots, or hyphens."
+  }
+}

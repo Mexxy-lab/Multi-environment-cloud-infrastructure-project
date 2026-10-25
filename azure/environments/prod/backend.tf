@@ -1,19 +1,19 @@
 # Store prod environment state in the private Azure Blob container.
-# terraform {
-#   backend "azurerm" {
-#     resource_group_name  = ""
-#     storage_account_name = ""
-#     container_name       = ""
-#     key                  = "azure/prod/terraform.tfstate"
-
-#     # Authenticate using the existing Azure CLI identity and Microsoft Entra ID.
-#     use_cli          = true
-#     use_azuread_auth = true
-#   }
-# }
-
 terraform {
-  backend "local" {
-    path = "terraform.tfstate"
+  backend "azurerm" {
+    resource_group_name  = "var.state_resource_group_name"
+    storage_account_name = "var.state_storage_account_name"
+    container_name       = "var.state_container_name"
+    key                  = "azure/prod/terraform.tfstate"
+
+    # Authenticate using the existing Azure CLI identity and Microsoft Entra ID.
+    use_cli          = true
+    use_azuread_auth = true
   }
 }
+
+# terraform {
+#   backend "local" {
+#     path = "terraform.tfstate"
+#   }
+# }
