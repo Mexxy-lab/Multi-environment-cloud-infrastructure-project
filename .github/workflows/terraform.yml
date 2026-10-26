@@ -1,128 +1,289 @@
-# Multi-cloud Terraform CI.
-# Validates Terraform without provisioning resources or requiring cloud credentials.
+# # Multi-cloud Terraform CI.
+# # Validates Terraform without provisioning resources or requiring cloud credentials.
+# name: Terraform CI
+
+# on:
+#   pull_request:
+#     branches: [main]
+#     paths:
+#       - "aws/**"
+#       - "azure/**"
+#       - ".github/workflows/terraform.yml"
+#       - ".tflint.hcl"
+#   push:
+#     branches: [main]
+#     paths:
+#       - "aws/**"
+#       - "azure/**"
+#       - ".github/workflows/terraform.yml"
+#       - ".tflint.hcl"
+#   workflow_dispatch:
+
+# # These jobs only need read access to repository contents.
+# permissions:
+#   contents: read
+
+# # Cancel older checks for the same branch when a newer commit arrives.
+# concurrency:
+#   group: terraform-ci-${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
+
+# jobs:
+#   terraform-validate:
+#     name: Validate ${{ matrix.root }}
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 20
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         root:
+#           - aws/environments/dev
+#           - aws/environments/staging
+#           - aws/environments/prod
+#           - azure/environments/dev
+#           - azure/environments/staging
+#           - azure/environments/prod
+#     defaults:
+#       run:
+#         working-directory: ${{ matrix.root }}
+#     steps:
+#       - name: Check out repository
+#         uses: actions/checkout@v4
+
+#       - name: Set up Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: "1.11.4"
+#           terraform_wrapper: false
+
+#       # Check formatting without changing files.
+#       - name: Check Terraform formatting
+#         run: terraform fmt -check -recursive
+
+#       # Skip backend initialization so the S3 and Azure state stores are not
+#       # required for this validation-only pipeline.
+#       - name: Initialize Terraform without a backend
+#         run: terraform init -backend=false -input=false
+
+#       - name: Validate Terraform configuration
+#         run: terraform validate -no-color
+
+#   tflint:
+#     name: TFLint ${{ matrix.root }}
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 20
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         root:
+#           - aws/environments/dev
+#           - aws/environments/staging
+#           - aws/environments/prod
+#           - azure/environments/dev
+#           - azure/environments/staging
+#           - azure/environments/prod
+#     defaults:
+#       run:
+#         working-directory: ${{ matrix.root }}
+#     steps:
+#       - name: Check out repository
+#         uses: actions/checkout@v4
+
+#       - name: Set up TFLint
+#         uses: terraform-linters/setup-tflint@v4
+
+#       - name: Initialize TFLint plugins
+#         run: tflint --init
+
+#       - name: Run TFLint
+#         run: tflint --no-color
+
+#   security-scan:
+#     name: Checkov security scan ${{ matrix.root }}
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 20
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         root:
+#           - aws/environments/dev
+#           - aws/environments/staging
+#           - aws/environments/prod
+#           - azure/environments/dev
+#           - azure/environments/staging
+#           - azure/environments/prod
+#     steps:
+#       - name: Check out repository
+#         uses: actions/checkout@v4
+
+#       # Static scan only; no AWS/Azure credentials or deployed resources needed.
+#       - name: Run Checkov
+#         uses: bridgecrewio/checkov-action@v12
+#         with:
+#           directory: ${{ matrix.root }}
+#           framework: terraform
+#           quiet: true
+#           # Report findings without blocking during the initial baseline review.
+#           # Change to false later to enforce the security checks.
+#           soft_fail: true
+
+# Validate Terraform configurations without deploying infrastructure.
 name: Terraform CI
 
 on:
   pull_request:
-    branches: [main]
     paths:
       - "aws/**"
       - "azure/**"
-      - ".github/workflows/terraform.yml"
+      - ".github/workflows/**"
       - ".tflint.hcl"
+      - ".trivyignore"
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - "aws/**"
       - "azure/**"
-      - ".github/workflows/terraform.yml"
+      - ".github/workflows/**"
       - ".tflint.hcl"
+      - ".trivyignore"
   workflow_dispatch:
 
-# These jobs only need read access to repository contents.
+# CI only needs read access to the repository.
 permissions:
   contents: read
 
-# Cancel older checks for the same branch when a newer commit arrives.
+# Cancel an older CI run when a newer commit arrives on the same branch.
 concurrency:
-  group: terraform-ci-${{ github.workflow }}-${{ github.ref }}
+  group: terraform-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  terraform-validate:
-    name: Validate ${{ matrix.root }}
+  # Check that all Terraform files follow standard formatting.
+  format:
+    name: Terraform formatting
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        root:
-          - aws/environments/dev
-          - aws/environments/staging
-          - aws/environments/prod
-          - azure/environments/dev
-          - azure/environments/staging
-          - azure/environments/prod
-    defaults:
-      run:
-        working-directory: ${{ matrix.root }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Terraform
+      - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.11.4"
-          terraform_wrapper: false
+          terraform_version: "1.10.5"
 
-      # Check formatting without changing files.
+      # Check formatting without modifying files.
       - name: Check Terraform formatting
         run: terraform fmt -check -recursive
 
-      # Skip backend initialization so the S3 and Azure state stores are not
-      # required for this validation-only pipeline.
-      - name: Initialize Terraform without a backend
-        run: terraform init -backend=false -input=false
-
-      - name: Validate Terraform configuration
-        run: terraform validate -no-color
-
-  tflint:
-    name: TFLint ${{ matrix.root }}
+  # Validate each independent Terraform root without initializing its backend.
+  validate:
+    name: Validate ${{ matrix.root }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+
     strategy:
       fail-fast: false
       matrix:
         root:
+          - aws/bootstrap
           - aws/environments/dev
           - aws/environments/staging
           - aws/environments/prod
+          - azure/bootstrap
           - azure/environments/dev
           - azure/environments/staging
           - azure/environments/prod
-    defaults:
-      run:
-        working-directory: ${{ matrix.root }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up TFLint
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+
+      # Skip the remote backend. No S3 bucket or Azure Storage Account is needed.
+      - name: Initialize Terraform providers
+        working-directory: ${{ matrix.root }}
+        run: terraform init -backend=false -input=false
+
+      # Check Terraform syntax and internal configuration consistency.
+      - name: Validate Terraform
+        working-directory: ${{ matrix.root }}
+        run: terraform validate -no-color
+
+  # Find common Terraform mistakes and style issues.
+  lint:
+    name: TFLint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+
+      - name: Install TFLint
         uses: terraform-linters/setup-tflint@v4
 
       - name: Initialize TFLint plugins
         run: tflint --init
 
-      - name: Run TFLint
-        run: tflint --no-color
+      # Lint each root separately so environments remain independent.
+      - name: Lint Terraform roots
+        shell: bash
+        run: |
+          set -euo pipefail
 
-  security-scan:
-    name: Checkov security scan ${{ matrix.root }}
+          roots=(
+            aws/bootstrap
+            aws/environments/dev
+            aws/environments/staging
+            aws/environments/prod
+            azure/bootstrap
+            azure/environments/dev
+            azure/environments/staging
+            azure/environments/prod
+          )
+
+          for root in "${roots[@]}"; do
+            echo "Linting ${root}"
+            tflint --chdir="${root}"
+          done
+
+  # Scan Terraform files for common infrastructure security problems.
+  security:
+    name: Infrastructure security scan
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        root:
-          - aws/environments/dev
-          - aws/environments/staging
-          - aws/environments/prod
-          - azure/environments/dev
-          - azure/environments/staging
-          - azure/environments/prod
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # Static scan only; no AWS/Azure credentials or deployed resources needed.
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
+      - name: Scan Terraform configuration with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          directory: ${{ matrix.root }}
-          framework: terraform
-          quiet: true
-          # Report findings without blocking during the initial baseline review.
-          # Change to false later to enforce the security checks.
-          soft_fail: true
+          scan-type: config
+          scan-ref: .
+          exit-code: "1"
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+  # Detect likely credentials accidentally committed to the repository.
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Scan for secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
