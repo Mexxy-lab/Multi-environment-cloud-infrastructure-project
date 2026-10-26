@@ -455,11 +455,11 @@ After cleanup, verify that the expected resources are gone and that the state bu
 - [x] Apply and validate the dev network and compute resources.
 - [x] Confirm Systems Manager access and document validation evidence.
 - [x] Review module quality and production safeguards.
-- [ ] Implement the Azure networking and compute modules.
-- [ ] Configure Azure remote state and environment isolation.
-- [ ] Add Terraform CI/CD with formatting, validation, planning, and approvals.
-- [ ] Add security scanning, documentation, and architecture diagrams.
-- [ ] Capture screenshots and final deployment evidence for the portfolio.
+- [x] Implement the Azure networking and compute modules.
+- [x] Configure Azure remote state and environment isolation.
+- [x] Add Terraform CI/CD with formatting, validation, planning, and approvals.
+- [x] Add security scanning, documentation, and architecture diagrams.
+- [x] Capture screenshots and final deployment evidence for the portfolio.
 
 ## Learning Outcomes
 
