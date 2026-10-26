@@ -98,28 +98,15 @@ variable "tags" {
   default     = {}
 }
 
-variable "state_storage_account_name" {
-  description = "Globally unique Azure Storage Account name for Terraform state."
-  type        = string
+# variable "state_container_name" {
+#   description = "Private Blob container used for Terraform remote state."
+#   type        = string
+#   default     = "tfstate"
+# }
 
-  validation {
-    condition = (
-      length(var.state_storage_account_name) >= 3 &&
-      length(var.state_storage_account_name) <= 24 &&
-      can(regex("^[a-z0-9]+$", var.state_storage_account_name))
-    )
-    error_message = "The Storage Account name must contain 3–24 lowercase letters or numbers."
-  }
-}
+# variable "state_resource_group_name" {
+#   description = "Resource group for the Terraform state storage account."
+#   type        = string
+#   default     = "mctpstate-rg"
+# }
 
-variable "state_container_name" {
-  description = "Private Blob container used for Terraform remote state."
-  type        = string
-  default     = "tfstate"
-}
-
-variable "state_resource_group_name" {
-  description = "Resource group for the Terraform state storage account."
-  type        = string
-  default     = "mctpstate-rg"
-}
