@@ -96,60 +96,6 @@ Private S3 state bucket
 
 The bootstrap configuration creates the bucket. The environment configurations use the bucket as their remote backend. The bootstrap configuration's own state remains local and must be backed up securely.
 
-## Repository Structure
-
-```text
-multi-cloud-terraform-platform/
-├── aws/
-│   ├── bootstrap/
-│   │   ├── versions.tf
-│   │   ├── providers.tf
-│   │   ├── variables.tf
-│   │   ├── main.tf
-│   │   ├── outputs.tf
-│   │   └── terraform.tfvars       # Local only; ignored by Git
-│   ├── modules/
-│   │   ├── network/
-│   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
-│   │   └── compute/
-│   │       ├── main.tf
-│   │       ├── variables.tf
-│   │       └── outputs.tf
-│   └── environments/
-│       ├── dev/
-│       │   ├── versions.tf
-│       │   ├── providers.tf
-│       │   ├── backend.tf
-│       │   ├── variables.tf
-│       │   ├── main.tf
-│       │   ├── outputs.tf
-│       │   └── terraform.tfvars  # Local only; ignored by Git
-│       ├── staging/
-│       └── prod/
-├── azure/
-│   ├── bootstrap/
-│   ├── modules/
-│   │   ├── network/
-│   │   └── compute/
-│   └── environments/
-│       ├── dev/
-│       ├── staging/
-│       └── prod/
-├── .github/
-│   └── workflows/
-│       └── terraform.yml
-├── docs/
-│   ├── architecture/
-│   └── screenshots/
-├── README.md
-├── LICENSE
-└── .gitignore
-```
-
-The Azure directories and GitHub Actions workflow are part of the intended repository structure; their presence alone does not mean those implementations are complete.
-
 ## Technology Stack
 
 | Technology          | Purpose                                    |
