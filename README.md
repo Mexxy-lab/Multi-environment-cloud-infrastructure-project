@@ -9,7 +9,6 @@ A portfolio project demonstrating secure, reusable, and environment-aware infras
 - [Overview](#overview)
 - [Objectives](#objectives)
 - [Architecture](#architecture)
-- [Repository Structure](#repository-structure)
 - [Technology Stack](#technology-stack)
 - [AWS Implementation](#aws-implementation)
 - [Security Design](#security-design)
