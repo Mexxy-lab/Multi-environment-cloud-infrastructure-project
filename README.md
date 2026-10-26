@@ -1,4 +1,6 @@
-# Multi-Cloud Terraform Platform
+# Multi-environment cloud infrastructure with Terraform
+
+![alt text](docs/screenshots/image.png)
 
 A portfolio project demonstrating secure, reusable, and environment-aware infrastructure provisioning across AWS and Microsoft Azure using Terraform.
 
