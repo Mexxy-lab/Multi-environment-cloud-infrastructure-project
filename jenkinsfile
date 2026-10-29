@@ -1,0 +1,133 @@
+```groovy
+pipeline {
+    agent any
+
+    options {
+        // Add timestamps to logs and prevent overlapping builds.
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    environment {
+        TF_IN_AUTOMATION = 'true'
+        TF_INPUT = 'false'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Jenkins checks out the repository configured in the job.
+                checkout scm
+            }
+        }
+
+        stage('Check Required Tools') {
+            steps {
+                sh '''
+                    set -eu
+
+                    # Confirm the CI agent has the required tools.
+                    command -v git
+                    command -v terraform
+
+                    terraform version
+                    git --version
+                '''
+            }
+        }
+
+        stage('Terraform Formatting') {
+            steps {
+                sh '''
+                    set -eu
+
+                    # Check AWS and Azure Terraform files without changing them.
+                    terraform fmt -check -recursive aws
+                    terraform fmt -check -recursive azure
+                '''
+            }
+        }
+
+        stage('Terraform Validation') {
+            steps {
+                sh '''
+                    set -eu
+
+                    # Discover every directory containing Terraform files.
+                    # Each directory is validated independently as a root module.
+                    find aws azure -type f -name '*.tf' -printf '%h\\n' |
+                        sort -u > terraform-roots.txt
+
+                    if [ ! -s terraform-roots.txt ]; then
+                        echo "ERROR: No Terraform root modules found."
+                        exit 1
+                    fi
+
+                    while IFS= read -r root; do
+                        echo "=========================================="
+                        echo "Validating Terraform root: $root"
+                        echo "=========================================="
+
+                        (
+                            cd "$root"
+
+                            # Skip remote backend initialization during CI validation.
+                            terraform init -backend=false -input=false
+
+                            # Validate Terraform syntax and module configuration.
+                            terraform validate
+                        )
+                    done < terraform-roots.txt
+                '''
+            }
+        }
+
+        stage('TFLint') {
+            steps {
+                sh '''
+                    set -eu
+
+                    # Run TFLint if installed on the Jenkins agent.
+                    # Install it on the agent to make this a mandatory check.
+                    if command -v tflint >/dev/null 2>&1; then
+                        while IFS= read -r root; do
+                            echo "Running TFLint in $root"
+                            (
+                                cd "$root"
+                                tflint --init
+                                tflint
+                            )
+                        done < terraform-roots.txt
+                    else
+                        echo "WARNING: TFLint is not installed; skipping."
+                    fi
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            // Preserve the discovered roots for troubleshooting.
+            archiveArtifacts(
+                artifacts: 'terraform-roots.txt',
+                allowEmptyArchive: true
+            )
+        }
+
+        success {
+            echo 'SUCCESS: AWS and Azure Terraform CI checks passed.'
+        }
+
+        failure {
+            echo 'FAILED: Review the stage logs before merging or deploying.'
+        }
+
+        cleanup {
+            // Do not retain Terraform plans or local state as build artifacts.
+            sh 'rm -f terraform.tfstate terraform.tfstate.backup tfplan'
+        }
+    }
+}
+```
